@@ -1,4 +1,4 @@
-# README_RAKKAU
+# Demo App Additional Test Cases
 
 ## Generating and logging a device profile
 A function called `logDeviceInfo` has been [added](https://github.com/rakkau/forgerock-android-sdk/blob/rakkau/samples/auth/src/main/java/org/forgerock/auth/MainActivity.java#L136) to the original code, the propose of this function is to show an example of how to generate a `FRDeviceProfile` using the default `FrDeviceCollector` class. This will return a `JSONObject` containing the definition for the collected device, and it will be printed in the logcat. This function will run as soon as the application is launched.
