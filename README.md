@@ -63,6 +63,9 @@ To try out the ForgeRock Android SDK sample, perform these steps:
 <!------------------------------------------------------------------------------------------------------------------------------------>
 <!-- DOCS - Link off to the AM-centric documentation at sdks.forgerock.com. -->
 
+## Additions in fork
+Additions to this fork from the original code are described in the [README_FORK.md](./README_FORK.md) file.
+
 ## Documentation
 
 Documentation for the SDKs is provided at **<https://sdks.forgerock.com>**, and includes topics such as:
