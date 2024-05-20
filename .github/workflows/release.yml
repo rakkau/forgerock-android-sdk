@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+       - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build-upload-release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    ####
+    # Get version
+    ####
+    - name: Get version from tag
+      id: version
+      run: echo ::set-output name=number::$(echo $GITHUB_REF | cut -d / -f 3 | cut -d / -f 3 | sed -e 's/^v//') 
+
+    ####
+    # Create release
+    ####
+    - name: Create changelog text
+      id: changelog
+      uses: loopwerk/tag-changelog@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        exclude_types: other,doc,chore
+        config_file: .github/tag-changelog-config.js
+
+    - name: Parse changelog markdown to HTML
+      id: changelog-html
+      uses: lifepal/markdown-to-html@v1.2
+      with:
+        text: ${{ steps.changelog.outputs.changelog }}
+    
+    - name: Release to GitHub releasesc
+      uses: softprops/action-gh-release@v1
+      with:
+        body: ${{ steps.changelog.outputs.changes }}
+        fail_on_unmatched_files: true
+        tag_name: ${{ steps.version.outputs.number }}
+
+    - name: Notify on Release
+      env:
+        RELEASE_AUTHOR: ${{ github.actor }}
+        RELEASE_URL: "https://github.com/rakkau/forgerock-android-sdk/releases"
+        CHAT_WEBHOOK_URL: "${{ secrets.WEBHOOK_CHAT }}"
+      run: |
+        curl -X POST -H 'Content-Type: application/json' -d '{
+          "cardsV2": [{
+          "cardId": "unique-card-id",
+          "card": {
+            "header": {
+              "title": "Forgerock Android Demo - Changelog for new release: v${{ steps.version.outputs.number }}",
+              "subtitle": "Created by ${{ env.RELEASE_AUTHOR }}",
+              "imageType": "SQUARE",
+              "imageUrl": "https://logos-download.com/wp-content/uploads/2019/07/Android_and_Me_Logo.png",
+              "imageAltText": "Forgerock Android Demo"              
+            },
+            "sections": [{
+              "widgets": [{
+                "textParagraph": {
+                  "text": ${{ toJson(steps.changelog-html.outputs.html) }},
+                },
+              },{ 
+                "buttonList": {
+                    "buttons": [{
+                        "text": "View Releases",
+                        "onClick": {
+                        "openLink": {
+                            "url": "${{ env.RELEASE_URL }}"
+                        }
+                        }
+                    }]
+                }    
+              }]
+            }]
+          }
+        }]}' "${{ env.CHAT_WEBHOOK_URL }}"
