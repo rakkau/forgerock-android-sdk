@@ -28,9 +28,18 @@ import org.forgerock.android.auth.Listener;
 public class TreeDialogFragment extends DialogFragment {
 
     private MainActivity listener;
+    private static final String ARG_JOURNEY_NAME = "journey_name";
 
     public static TreeDialogFragment newInstance() {
         return new TreeDialogFragment();
+    }
+    
+    public static TreeDialogFragment newInstance(String journeyName) {
+        TreeDialogFragment fragment = new TreeDialogFragment();
+        Bundle args = new Bundle();
+        args.putString(ARG_JOURNEY_NAME, journeyName);
+        fragment.setArguments(args);
+        return fragment;
     }
 
     @Override
@@ -53,10 +62,18 @@ public class TreeDialogFragment extends DialogFragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
 
         View view = inflater.inflate(R.layout.fragment_tree, container, false);
+        
+        TextView treeName = view.findViewById(R.id.treeName);
+        
+        // Set dynamic journey name if provided
+        if (getArguments() != null && getArguments().containsKey(ARG_JOURNEY_NAME)) {
+            String journeyName = getArguments().getString(ARG_JOURNEY_NAME);
+            treeName.setText(journeyName);
+        }
+        
         Button start = view.findViewById(R.id.start);
         start.setOnClickListener(v -> {
             dismiss();
-            TextView treeName = view.findViewById(R.id.treeName);
             listener.launchTree(treeName.getText().toString());
         });
         Button launchBrowser = view.findViewById(R.id.launchBrowser);

@@ -23,8 +23,10 @@
  import android.view.MenuInflater;
  import android.view.MenuItem;
  import android.view.View;
+ import android.widget.Button;
  import android.widget.EditText;
  import android.widget.ImageView;
+ import android.widget.LinearLayout;
  import android.widget.ProgressBar;
  import android.widget.TextView;
  
@@ -39,14 +41,19 @@
  
  import org.forgerock.android.auth.AccessToken;
  import org.forgerock.android.auth.Config;
+ import org.forgerock.android.auth.ConfigHelper;
+ import org.forgerock.android.auth.FROptions;
+ import org.forgerock.android.auth.FROptionsBuilder;
  import org.forgerock.android.auth.FRAuth;
  import org.forgerock.android.auth.FRDevice;
  import org.forgerock.android.auth.FRListener;
+
  import org.forgerock.android.auth.FRSession;
  import org.forgerock.android.auth.FRUser;
  import org.forgerock.android.auth.Logger;
  import org.forgerock.android.auth.PolicyAdvice;
  import org.forgerock.android.auth.SecureCookieJar;
+
  import org.forgerock.android.auth.UserInfo;
  import org.forgerock.android.auth.collector.FRDeviceCollector;
  import org.forgerock.android.auth.interceptor.AccessTokenInterceptor;
@@ -86,35 +93,48 @@
      private static final String TAG = MainActivity.class.getSimpleName();
      public static final String LAUNCH_BROWSER = "LAUNCH_BROWSER";
  
-     private ImageView success;
-     private TextView content;
-     private ProgressBar progressBar;
- 
-     private boolean launchBrowser = false;
+         private ImageView success;
+    private TextView content;
+    private ProgressBar progressBar;
+    private LinearLayout countrySelectionLayout;
+    private Button btnArgentina;
+    private Button btnParaguay;
+
+    private boolean launchBrowser = false;
+    private boolean sdkInitialized = false;
+    private String currentJourney = "loginMFA"; // Default journey
  
      @Override
      protected void onCreate(Bundle savedInstanceState) {
  
-         /*
-         RequestInterceptorRegistry.getInstance().register(
-                 new ForceAuthRequestInterceptor(),
-                 new CustomCookieInterceptor(),
-                 new NoSessionRequestInterceptor()
-         );
-          */
- 
-         //CallbackFactory.getInstance().register(MyCustomDeviceProfile.class);
-         FRAuth.start(this);
-         Logger.set(Logger.Level.DEBUG);
-         super.onCreate(savedInstanceState);
- 
-         setContentView(org.forgerock.auth.R.layout.activity_main);
-         success = findViewById(org.forgerock.auth.R.id.success);
-         content = findViewById(org.forgerock.auth.R.id.content);
-         progressBar = findViewById(org.forgerock.auth.R.id.progressBar);
-         progressBar.setVisibility(INVISIBLE);
-         
-         logDeviceInfo();
+                         Logger.set(Logger.Level.DEBUG);
+        super.onCreate(savedInstanceState);
+
+        setContentView(org.forgerock.auth.R.layout.activity_main);
+        success = findViewById(org.forgerock.auth.R.id.success);
+        content = findViewById(org.forgerock.auth.R.id.content);
+        progressBar = findViewById(org.forgerock.auth.R.id.progressBar);
+        countrySelectionLayout = findViewById(org.forgerock.auth.R.id.countrySelectionLayout);
+        btnArgentina = findViewById(org.forgerock.auth.R.id.btnArgentina);
+        btnParaguay = findViewById(org.forgerock.auth.R.id.btnParaguay);
+        
+        progressBar.setVisibility(INVISIBLE);
+        
+        btnArgentina.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                selectCountry("digitalUser", "loginMFA", "Argentina");
+            }
+        });
+        
+        btnParaguay.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                selectCountry("paraguay", "loginMFA", "Paraguay");
+            }
+        });
+        
+        content.setText("Bienvenido!\nPor favor selecciona tu país para continuar.");
  
          if (getIntent() != null) {
              if (getIntent().getData() != null) {
@@ -129,12 +149,70 @@
              if (launchBrowser) {
                  launchBrowser();
              }
-         }
- 
-     }
-     
-     public void logDeviceInfo() {
-         // * Device */
+                 }
+
+    }
+    
+    private void selectCountry(String realm, String journey, String countryName) {
+        btnArgentina.setEnabled(false);
+        btnParaguay.setEnabled(false);
+        countrySelectionLayout.setVisibility(View.GONE);
+        content.setText("Inicializando " + countryName + "...");
+        initializeFRAuth(realm, journey);
+    }
+    
+    private void initializeFRAuth(String dynamicRealm, String dynamicJourney) {
+        if (sdkInitialized) {
+            Snackbar.make(content, "SDK ya configurado. Reinicia la app para cambiar país.", LENGTH_LONG).show();
+            return;
+        }
+        
+        try {
+            FROptions defaultOptions = ConfigHelper.load(this, null);
+            
+            FROptions options = FROptionsBuilder.build(builder -> {
+                builder.server(serverBuilder -> {
+                    serverBuilder.setUrl(defaultOptions.getServer().getUrl());
+                    serverBuilder.setRealm(dynamicRealm);
+                    serverBuilder.setCookieName(defaultOptions.getServer().getCookieName());
+                    serverBuilder.setTimeout(defaultOptions.getServer().getTimeout());
+                    serverBuilder.setCookieCacheSeconds(defaultOptions.getServer().getCookieCacheSeconds());
+                    return null;
+                });
+                builder.oauth(oauthBuilder -> {
+                    oauthBuilder.setOauthClientId(defaultOptions.getOauth().getOauthClientId());
+                    oauthBuilder.setOauthRedirectUri(defaultOptions.getOauth().getOauthRedirectUri());
+                    oauthBuilder.setOauthScope(defaultOptions.getOauth().getOauthScope());
+                    oauthBuilder.setOauthThresholdSeconds(defaultOptions.getOauth().getOauthThresholdSeconds());
+                    oauthBuilder.setOauthCacheSeconds(defaultOptions.getOauth().getOauthCacheSeconds());
+                    return null;
+                });
+                builder.service(serviceBuilder -> {
+                    serviceBuilder.setAuthServiceName(dynamicJourney);
+                    serviceBuilder.setRegistrationServiceName(defaultOptions.getService().getRegistrationServiceName());
+                    return null;
+                });
+                return null;
+            });
+            
+            FRAuth.start(this, options);
+            sdkInitialized = true;
+            currentJourney = dynamicJourney; // Save the selected journey
+            logDeviceInfo();
+            
+            String countryName = dynamicRealm.equals("digitalUser") ? "Argentina" : "Paraguay";
+            content.setText("✅ " + countryName + " configurado correctamente\n\nRealm: " + dynamicRealm + 
+                          "\nJourney: " + dynamicJourney + "\n\nUsa el menú para autenticarte.");
+                         
+        } catch (Exception e) {
+            FRAuth.start(this);
+            sdkInitialized = true;
+            try { logDeviceInfo(); } catch (Exception ignored) {}
+            content.setText("⚠️ Error: usando configuración por defecto\n\n" + e.getMessage());
+        }
+    }
+    
+    public void logDeviceInfo() {
          FRDeviceCollector.DEFAULT.collect(getBaseContext(), new FRListener<JSONObject>() {
              @Override
              public void onSuccess(JSONObject result) {
@@ -188,11 +266,11 @@
      public boolean onOptionsItemSelected(MenuItem item) {
          // Handle item selection
          switch (item.getItemId()) {
-             case org.forgerock.auth.R.id.login:
-                 success.setVisibility(INVISIBLE);
-                 content.setText("");
-                 TreeDialogFragment.newInstance().show(getSupportFragmentManager(), "TREE");
-                 return true;
+                         case org.forgerock.auth.R.id.login:
+                success.setVisibility(INVISIBLE);
+                content.setText("");
+                TreeDialogFragment.newInstance(currentJourney).show(getSupportFragmentManager(), "TREE");
+                return true;
  
              case org.forgerock.auth.R.id.register:
                  success.setVisibility(INVISIBLE);
@@ -201,15 +279,15 @@
                  startActivityForResult(registerIntent, AUTH_REQUEST_CODE);
                  return true;
  
-             case org.forgerock.auth.R.id.logout:
-                 success.setVisibility(INVISIBLE);
-                 content.setText("");
-                 if (FRUser.getCurrentUser() != null) {
-                     FRUser.getCurrentUser().logout();
-                 }
-                 TreeDialogFragment.newInstance().show(getSupportFragmentManager(), "TREE");
- 
-                 return true;
+                         case org.forgerock.auth.R.id.logout:
+                success.setVisibility(INVISIBLE);
+                content.setText("");
+                if (FRUser.getCurrentUser() != null) {
+                    FRUser.getCurrentUser().logout();
+                }
+                TreeDialogFragment.newInstance(currentJourney).show(getSupportFragmentManager(), "TREE");
+
+                return true;
              case org.forgerock.auth.R.id.profile:
                  checkPermission();
                  success.setVisibility(View.GONE);
