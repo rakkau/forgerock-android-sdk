@@ -102,7 +102,7 @@
 
     private boolean launchBrowser = false;
     private boolean sdkInitialized = false;
-    private String currentJourney = "loginMFA"; // Default journey
+    private String currentJourney = "loginPasswordless"; // Default journey
  
      @Override
      protected void onCreate(Bundle savedInstanceState) {
@@ -123,7 +123,7 @@
         btnArgentina.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                selectCountry("digitalUser", "loginMFA", "Argentina");
+                selectCountry("digitalUser", "loginPasswordless", "Argentina");
             }
         });
         
