@@ -32,11 +32,13 @@
  
  import androidx.annotation.NonNull;
  import androidx.annotation.Nullable;
- import androidx.appcompat.app.AlertDialog;
- import androidx.appcompat.app.AppCompatActivity;
- import androidx.core.app.ActivityCompat;
- 
- import com.google.android.material.snackbar.Snackbar;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+
+import android.net.Uri;
+
+import com.google.android.material.snackbar.Snackbar;
  import com.nimbusds.jwt.JWTParser;
  
  import org.forgerock.android.auth.AccessToken;
@@ -48,13 +50,15 @@
  import org.forgerock.android.auth.FRDevice;
  import org.forgerock.android.auth.FRListener;
 
- import org.forgerock.android.auth.FRSession;
- import org.forgerock.android.auth.FRUser;
- import org.forgerock.android.auth.Logger;
- import org.forgerock.android.auth.PolicyAdvice;
- import org.forgerock.android.auth.SecureCookieJar;
+import org.forgerock.android.auth.FRSession;
+import org.forgerock.android.auth.FRUser;
+import org.forgerock.android.auth.Logger;
+import org.forgerock.android.auth.Node;
+import org.forgerock.android.auth.NodeListener;
+import org.forgerock.android.auth.PolicyAdvice;
+import org.forgerock.android.auth.SecureCookieJar;
 
- import org.forgerock.android.auth.UserInfo;
+import org.forgerock.android.auth.UserInfo;
  import org.forgerock.android.auth.collector.FRDeviceCollector;
  import org.forgerock.android.auth.interceptor.AccessTokenInterceptor;
  import org.forgerock.android.auth.interceptor.AdviceHandler;
@@ -102,7 +106,7 @@
 
     private boolean launchBrowser = false;
     private boolean sdkInitialized = false;
-    private String currentJourney = "loginPasswordless"; // Default journey
+    private String currentJourney = "test_magicLink"; // Default journey
  
      @Override
      protected void onCreate(Bundle savedInstanceState) {
@@ -123,7 +127,7 @@
         btnArgentina.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                selectCountry("digitalUser", "loginPasswordless", "Argentina");
+                selectCountry("digitalUser", "test_magicLink", "Argentina");
             }
         });
         
@@ -135,22 +139,61 @@
         });
         
         content.setText("Bienvenido!\nPor favor selecciona tu país para continuar.");
- 
-         if (getIntent() != null) {
-             if (getIntent().getData() != null) {
-                 Intent resume = new Intent(this, SimpleLoginActivity.class);
-                 resume.setData(getIntent().getData());
-                 startActivityForResult(resume, AUTH_REQUEST_CODE);
-             }
-         }
- 
-         if (savedInstanceState != null) {
-             launchBrowser = savedInstanceState.getBoolean(LAUNCH_BROWSER, launchBrowser);
-             if (launchBrowser) {
-                 launchBrowser();
-             }
-                 }
 
+        if (getIntent() != null && getIntent().getData() != null) {
+            handleResumeUri(getIntent().getData());
+        }
+
+        if (savedInstanceState != null) {
+            launchBrowser = savedInstanceState.getBoolean(LAUNCH_BROWSER, launchBrowser);
+            if (launchBrowser) {
+                launchBrowser();
+            }
+                }
+
+    }
+    
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (intent != null && intent.getData() != null) {
+            setIntent(intent);
+            handleResumeUri(intent.getData());
+        }
+    }
+    
+    private void handleResumeUri(Uri resumeUri) {
+        countrySelectionLayout.setVisibility(View.GONE);
+        progressBar.setVisibility(VISIBLE);
+        content.setText("Resumiendo autenticación...");
+        
+        if (!sdkInitialized) {
+            initializeFRAuth("digitalUser", "test_magicLink");
+        }
+        
+        FRSession.authenticate(this, resumeUri, new NodeListener<FRSession>() {
+            @Override
+            public void onSuccess(FRSession session) {
+                runOnUiThread(() -> {
+                    progressBar.setVisibility(INVISIBLE);
+                    success.setVisibility(VISIBLE);
+                    userinfo();
+                });
+            }
+
+            @Override
+            public void onException(Exception e) {
+                runOnUiThread(() -> {
+                    progressBar.setVisibility(INVISIBLE);
+                    content.setText("Error al resumir autenticación:\n" + e.getMessage());
+                    Snackbar.make(content, "Error: " + e.getMessage(), LENGTH_LONG).show();
+                });
+            }
+
+            @Override
+            public void onCallbackReceived(Node node) {
+            }
+        });
     }
     
     private void selectCountry(String realm, String journey, String countryName) {

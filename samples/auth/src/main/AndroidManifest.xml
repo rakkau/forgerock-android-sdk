@@ -54,17 +54,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <!-- Deep link to handle resumeURI -->
-            <intent-filter>
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                    android:host="openam.example.com"
+                    android:host="telecom.rakkau.com"
                     android:pathPrefix="/openam"
-                    android:port="8081"
-                    android:scheme="http" />
+                    android:scheme="https" />
             </intent-filter>
             <!-- End of Deep link setting -->
         </activity>
