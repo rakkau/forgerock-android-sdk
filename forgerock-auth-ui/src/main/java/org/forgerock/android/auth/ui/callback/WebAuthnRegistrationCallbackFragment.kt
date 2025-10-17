@@ -39,7 +39,7 @@ open class WebAuthnRegistrationCallbackFragment : CallbackFragment<WebAuthnRegis
         val scope = CoroutineScope(Dispatchers.Main)
         scope.launch {
             try {
-                callback.setResidentKeyRequirement(ResidentKeyRequirement.RESIDENT_KEY_DISCOURAGED)
+                callback.setResidentKeyRequirement(ResidentKeyRequirement.RESIDENT_KEY_PREFERRED)
                 callback.register(requireContext(), node = node)
                 next()
             } catch (e: CancellationException) {
