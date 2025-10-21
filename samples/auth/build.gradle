@@ -34,8 +34,10 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
         }
         debug {
+            signingConfig signingConfigs.debug
         }
     }
 
@@ -59,6 +61,18 @@ android {
     
     kotlinOptions {
         jvmTarget = '17'
+    }
+
+    flavorDimensions "app"
+    productFlavors {
+        app1 {
+            dimension "app"
+            applicationId "org.forgerock.auth"  // Package name para App1
+        }
+        app2 {
+            dimension "app"
+            applicationId "org.forgerock.auth2"  // Package name para App2
+        }
     }
 }
 

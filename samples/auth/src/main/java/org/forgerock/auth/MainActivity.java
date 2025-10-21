@@ -14,6 +14,7 @@
  import static com.google.android.material.snackbar.Snackbar.LENGTH_LONG;
  import static org.forgerock.android.auth.ui.SimpleLoginActivity.ERROR_EXTRA;
  
+ import android.content.Context;
  import android.content.DialogInterface;
  import android.content.Intent;
  import android.graphics.Color;
@@ -211,6 +212,19 @@ import org.forgerock.android.auth.UserInfo;
         }
         
         try {
+            Context sharedContext = createPackageContext("org.forgerock.auth", Context.CONTEXT_IGNORE_SECURITY);
+            Config.getInstance().setSsoSharedPreferences(
+                sharedContext.getSharedPreferences("org.forgerock.shared.sso", MODE_PRIVATE));
+            Config.getInstance().setSharedPreferences(
+                sharedContext.getSharedPreferences("org.forgerock.shared.prefs", MODE_PRIVATE));
+        } catch (Exception e) {
+            Config.getInstance().setSsoSharedPreferences(
+                getSharedPreferences("org.forgerock.shared.sso", MODE_PRIVATE));
+            Config.getInstance().setSharedPreferences(
+                getSharedPreferences("org.forgerock.shared.prefs", MODE_PRIVATE));
+        }
+        
+        try {
             FROptions defaultOptions = ConfigHelper.load(this, null);
             
             FROptions options = FROptionsBuilder.build(builder -> {
@@ -240,7 +254,7 @@ import org.forgerock.android.auth.UserInfo;
             
             FRAuth.start(this, options);
             sdkInitialized = true;
-            currentJourney = dynamicJourney; // Save the selected journey
+            currentJourney = dynamicJourney;
             logDeviceInfo();
             
             String countryName = dynamicRealm.equals("digitalUser") ? "Argentina" : "Paraguay";
@@ -286,17 +300,17 @@ import org.forgerock.android.auth.UserInfo;
          super.onActivityResult(requestCode, resultCode, data);
          if (requestCode == AUTH_REQUEST_CODE) {
              // Make sure the request was successful
-             if (resultCode == RESULT_OK) {
-                 if (data!= null && data.getStringExtra(ERROR_EXTRA) != null) {
-                     Snackbar.make(findViewById(org.forgerock.auth.R.id.success), "Login Failed:" +
-                             data.getStringExtra(ERROR_EXTRA) , LENGTH_LONG).show();
-                 } else {
-                     success.setVisibility(VISIBLE);
-                     userinfo();
-                 }
-            }
-         }
-     }
+            if (resultCode == RESULT_OK) {
+                if (data!= null && data.getStringExtra(ERROR_EXTRA) != null) {
+                    Snackbar.make(findViewById(org.forgerock.auth.R.id.success), "Login Failed:" +
+                            data.getStringExtra(ERROR_EXTRA) , LENGTH_LONG).show();
+                } else {
+                    success.setVisibility(VISIBLE);
+                    userinfo();
+                }
+           }
+        }
+    }
  
      @Override
      public boolean onCreateOptionsMenu(Menu menu) {
